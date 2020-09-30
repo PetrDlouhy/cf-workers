@@ -11,6 +11,10 @@ const BYPASS_URL_PATTERNS = [
   /\/wp-admin\/.*/
 ];
 
+const NO_BYPASS_URL_PATTERNS = [
+  /.*cf_cache_bust.*/
+]
+
  /**
  * Main worker entry point.
  */
@@ -59,6 +63,14 @@ function bypassCache(request) {
   // Bypass the cache for all requests to a URL that matches any of the URL path bypass patterns
   const url = new URL(request.url);
   const path = url.pathname + url.search;
+
+  if (NO_BYPASS_URL_PATTERNS.length) {
+    for (let pattern of NO_BYPASS_URL_PATTERNS) {
+      if (path.match(pattern)) {
+        return false;
+      }
+    }
+  }
   if (BYPASS_URL_PATTERNS.length) {
     for (let pattern of BYPASS_URL_PATTERNS) {
       if (path.match(pattern)) {
@@ -74,6 +86,15 @@ function bypassCache(request) {
     if (cookieHeader && cookieHeader.length && BYPASS_COOKIE_PREFIXES.length) {
       const cookies = cookieHeader.split(';');
       for (let cookie of cookies) {
+
+        // If cache-cookie is set, drive cache explicitly
+        if(cookie.trim() == 'cache-cookie=no-cache'){
+          return true;
+        };
+        if(cookie.trim() == 'cache-cookie=cache'){
+          return false;
+        };
+
         // See if the cookie starts with any of the logged-in user prefixes
         for (let prefix of BYPASS_COOKIE_PREFIXES) {
           if (cookie.trim().startsWith(prefix)) {
